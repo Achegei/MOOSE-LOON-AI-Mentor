@@ -36,6 +36,7 @@ class OpenAIService(BaseLLMService):
         context: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
     ) -> str:
         """
         Generate a response using OpenAI API.
@@ -45,6 +46,7 @@ class OpenAIService(BaseLLMService):
             context: Optional context for RAG
             temperature: Temperature for response
             max_tokens: Maximum tokens in response
+            model: Optional model override
 
         Returns:
             Generated response
@@ -63,7 +65,7 @@ class OpenAIService(BaseLLMService):
         try:
             response = await asyncio.to_thread(
                 self.client.chat.completions.create,
-                model=settings.LLM_MODEL,
+                model=model or settings.LLM_MODEL,
                 messages=[
                     {
                         "role": "system",
@@ -72,7 +74,7 @@ class OpenAIService(BaseLLMService):
                     {"role": "user", "content": full_prompt},
                 ],
                 temperature=temperature,
-                max_tokens=max_tokens or 2000,
+                max_tokens=max_tokens or 1100,
             )
             message = response.choices[0].message
             if isinstance(message, dict):

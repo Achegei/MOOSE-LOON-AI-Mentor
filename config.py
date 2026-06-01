@@ -34,9 +34,14 @@ try:
 
         OPENAI_API_KEY: Optional[str] = None
         LLM_MODEL: str = "gpt-4"
+        LLM_FAST_MODEL: str = "gpt-4o-mini"
         LLM_TEMPERATURE: float = 0.7
 
         CHROMA_DB_PATH: str = "./data/chroma_db"
+
+        BILLING_CHECKOUT_BUILDER_URL: Optional[str] = None
+        BILLING_CHECKOUT_PRO_URL: Optional[str] = None
+        BILLING_CHECKOUT_TEAM_URL: Optional[str] = None
 
         ENVIRONMENT: str = "development"
 
@@ -79,9 +84,14 @@ except Exception:
 
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
         LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4")
+        LLM_FAST_MODEL = os.getenv("LLM_FAST_MODEL", "gpt-4o-mini")
         LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 
         CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./data/chroma_db")
+
+        BILLING_CHECKOUT_BUILDER_URL = os.getenv("BILLING_CHECKOUT_BUILDER_URL")
+        BILLING_CHECKOUT_PRO_URL = os.getenv("BILLING_CHECKOUT_PRO_URL")
+        BILLING_CHECKOUT_TEAM_URL = os.getenv("BILLING_CHECKOUT_TEAM_URL")
 
         ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 

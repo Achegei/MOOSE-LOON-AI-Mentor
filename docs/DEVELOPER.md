@@ -131,6 +131,13 @@ Current implementations:
 
 Do not hardcode provider-specific calls into route handlers. Add future providers behind the same base interface.
 
+Chat performance uses two model paths:
+
+- `LLM_FAST_MODEL`: used for Quick Answer mode
+- `LLM_MODEL`: used for Deep Research mode
+
+Quick Answer is optimized for short, responsive coaching. Deep Research is optimized for more structured, context-rich mentoring.
+
 ### RAG
 
 Locations:
@@ -179,6 +186,32 @@ Mentor:
 - `POST /progress/update`
 - `GET /settings/session`
 
+## Chat Performance
+
+Mentor chat supports two modes:
+
+| Mode | RAG Chunks | Max Tokens | Model |
+| --- | ---: | ---: | --- |
+| Quick Answer | 1 | 450 | `LLM_FAST_MODEL` |
+| Deep Research | 5 | 1800 | `LLM_MODEL` |
+
+Chat does not ingest curriculum at request time. Curriculum should be ingested before runtime with:
+
+```bash
+python -m rag.ingest
+```
+
+Repeated research answers are cached in `ChatResponseCache`. The cache key includes the normalized prompt, chat mode, and retrieved context hash.
+
+Default TTL:
+
+- Quick Answer: 3 days
+- Deep Research: 7 days
+
+Quick Answer has an 8-second backend timeout. If the fast model is slow or unavailable, the backend returns a short curriculum-grounded fallback instead of leaving the learner waiting. Timeout fallbacks are not cached.
+
+Streaming responses are not implemented yet. The current frontend shows a progress spinner while the backend retrieves context, checks cache, and calls the LLM. To add streaming later, introduce a streaming FastAPI endpoint and update Streamlit to consume incremental chunks.
+
 Health:
 
 - `GET /`
@@ -189,6 +222,7 @@ Billing and developer APIs:
 - `GET /billing/tiers`
 - `GET /billing/subscription`
 - `POST /billing/subscription`
+- `POST /billing/checkout`
 - `GET /developer/api-keys`
 - `POST /developer/api-keys`
 - `DELETE /developer/api-keys/{key_id}`
@@ -205,7 +239,17 @@ Current tiers:
 - Pro: 10 API keys, 10,000 API calls per month
 - Team: 50 API keys, 50,000 API calls per month
 
-The current implementation lets an authenticated user select a tier directly. This is useful for MVP demos and local testing, but production billing should replace direct tier updates with a payment provider flow:
+Paid tiers are locked by the backend. `POST /billing/subscription` can keep the current plan or downgrade to Free, but it does not activate Builder, Pro, or Team. Paid plan buttons call `POST /billing/checkout`, which returns a hosted checkout URL when configured.
+
+Configure hosted checkout links with:
+
+```bash
+BILLING_CHECKOUT_BUILDER_URL=
+BILLING_CHECKOUT_PRO_URL=
+BILLING_CHECKOUT_TEAM_URL=
+```
+
+Production billing should use this flow:
 
 1. Frontend starts checkout for a selected tier.
 2. Payment provider handles payment.
@@ -213,7 +257,10 @@ The current implementation lets an authenticated user select a tier directly. Th
 4. Backend updates `UserSubscription` only after verifying the webhook.
 5. API key limits are enforced from the verified subscription tier.
 
-Do not trust frontend tier changes in production.
+Do not trust frontend tier changes. Premium mentor routes also enforce subscription entitlements:
+
+- Builder or higher: assignment generation and project recommendations
+- Pro or higher: portfolio review
 
 ## Developer API Keys
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -191,6 +192,47 @@ st.markdown(
         color: #d1d5db;
         margin-bottom: 0;
     }
+    .nav-section-label {
+        color: var(--ml-muted);
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        margin: .9rem 0 .35rem 0;
+    }
+    .nav-active-label {
+        display: none;
+    }
+    [data-testid="stSidebar"] div[data-testid="stButton"] button {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: left;
+        background: transparent;
+        color: var(--ml-muted);
+        border: 1px solid transparent;
+        box-shadow: none;
+        transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    [data-testid="stSidebar"] div[data-testid="stButton"] button:hover {
+        background: #eef6f4;
+        color: var(--ml-ink);
+        border-color: rgba(14,118,110,.22);
+        transform: translateX(2px);
+    }
+    [data-testid="stSidebar"] div[data-testid="stButton"] button:focus {
+        box-shadow: 0 0 0 2px rgba(14,118,110,.18);
+    }
+    [data-testid="stSidebar"] div[data-testid="stButton"]:has(.nav-active-label) button {
+        background: #0e766e;
+        color: #ffffff;
+        border-color: #0e766e;
+        box-shadow: 0 10px 18px rgba(14,118,110,.18);
+    }
+    [data-testid="stSidebar"] div[data-testid="stButton"]:has(.nav-active-label) button:hover {
+        background: #0b5f59;
+        color: #ffffff;
+        border-color: #0b5f59;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -221,6 +263,8 @@ def ensure_session_state() -> None:
         "new_api_key": None,
         "cookie_action": None,
         "session_restored": False,
+        "current_page": "Overview",
+        "chat_mode": "quick",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -324,6 +368,8 @@ def friendly_error(exc: requests.RequestException) -> str:
         return "Your session expired. Please sign in again."
     if exc.response.status_code == 403:
         return detail or "Your current plan cannot access this action."
+    if exc.response.status_code == 402:
+        return detail or "Upgrade required for this feature."
     if exc.response.status_code == 429:
         return detail or "Your monthly API limit has been reached."
     if exc.response.status_code >= 500:
@@ -498,18 +544,20 @@ def require_auth() -> bool:
     return False
 
 
-def send_chat(prompt: str) -> None:
+def send_chat(prompt: str, mode: str) -> None:
     """Send a mentor chat request."""
     if not prompt.strip():
         st.warning("Ask a focused question so your mentor can help.")
         return
-    result = api_post(
-        "/chat/",
-        {
-            "prompt": prompt.strip(),
-            "conversation_id": st.session_state.get("conversation_id"),
-        },
-    )
+    with st.spinner("Thinking..."):
+        result = api_post(
+            "/chat/",
+            {
+                "prompt": prompt.strip(),
+                "conversation_id": st.session_state.get("conversation_id"),
+                "mode": mode,
+            },
+        )
     if not result:
         return
     st.session_state["conversation_id"] = result.get("conversation_id")
@@ -550,27 +598,54 @@ def render_workspace_header(page: str) -> None:
     )
 
 
+def clean_chat_text(message: str | None) -> str:
+    """Render mentor messages as plain learner-facing text."""
+    text = message or ""
+    text = re.sub(
+        r"```.*?```",
+        "[Code example omitted from the learner view.]",
+        text,
+        flags=re.DOTALL,
+    )
+    return text.replace("`", "").strip()
+
+
+def render_chat_history() -> None:
+    """Render conversation history above the composer."""
+    if not st.session_state["chat_history"]:
+        st.info("Start with a focused question about AI, automation, projects, or your learning path.")
+        return
+
+    with st.container(height=430, border=True):
+        for speaker, message in st.session_state["chat_history"]:
+            role = "user" if speaker == "You" else "assistant"
+            with st.chat_message(role):
+                st.write(clean_chat_text(message))
+
+
 def render_sidebar() -> str:
     """Render navigation and account controls."""
+    nav_items = [
+        "Overview",
+        "Mentor",
+        "Learning Path",
+        "Practice",
+        "Projects",
+        "Portfolio Review",
+        "Progress",
+        "Pricing",
+        "Developers",
+        "Account",
+    ]
     with st.sidebar:
         st.markdown("## MOOSE LOON")
         st.caption("AI and Automation Mentor")
-        page = st.radio(
-            "Workspace",
-            [
-                "Overview",
-                "Mentor",
-                "Learning Path",
-                "Practice",
-                "Projects",
-                "Portfolio Review",
-                "Progress",
-                "Pricing",
-                "Developers",
-                "Account",
-            ],
-            label_visibility="collapsed",
-        )
+        st.markdown('<div class="nav-section-label">Workspace</div>', unsafe_allow_html=True)
+        for item in nav_items:
+            if st.session_state["current_page"] == item:
+                st.markdown('<span class="nav-active-label"></span>', unsafe_allow_html=True)
+            if st.button(item, key=f"nav_{item}", use_container_width=True):
+                st.session_state["current_page"] = item
 
         st.divider()
         show_message(st.session_state.get("auth_message"))
@@ -603,7 +678,7 @@ def render_sidebar() -> str:
                 if st.button("Create Account", use_container_width=True):
                     register(email, username, password, full_name)
 
-    return page
+    return st.session_state["current_page"]
 
 
 def overview_page() -> None:
@@ -660,25 +735,33 @@ def overview_page() -> None:
 def mentor_page() -> None:
     """Render mentor chat."""
     render_workspace_header("Mentor")
-    st.markdown("## Mentor")
-    st.caption("Ask for coaching, explanations, debugging guidance, or career direction.")
+    st.markdown("## Mentor Chat")
+    st.caption("Ask your mentor what to learn, build, debug, or improve next.")
     if not require_auth():
         return
 
-    prompt = st.text_area(
-        "Message",
-        placeholder="Example: Help me understand how RAG works and give me a beginner exercise.",
-        height=132,
-        label_visibility="collapsed",
-    )
-    if st.button("Send to Mentor", use_container_width=True):
-        send_chat(prompt)
+    st.markdown("### Conversation")
+    render_chat_history()
 
-    if st.session_state["chat_history"]:
-        st.divider()
-        for speaker, message in st.session_state["chat_history"]:
-            avatar = "user" if speaker == "You" else "assistant"
-            st.chat_message(avatar).write(message)
+    st.markdown("### Your Message")
+    mode_label = st.segmented_control(
+        "Response style",
+        ["Quick Answer", "Deep Research"],
+        default="Quick Answer" if st.session_state["chat_mode"] == "quick" else "Deep Research",
+        help="Quick is faster and concise. Deep uses more curriculum context and gives a structured response.",
+    )
+    st.session_state["chat_mode"] = "deep" if mode_label == "Deep Research" else "quick"
+    with st.form("mentor_composer", clear_on_submit=True):
+        prompt = st.text_area(
+            "Message",
+            placeholder="Example: Explain RAG in simple terms and give me one beginner exercise.",
+            height=118,
+            label_visibility="collapsed",
+        )
+        submitted = st.form_submit_button("Send Message", use_container_width=True)
+    if submitted:
+        send_chat(prompt, st.session_state["chat_mode"])
+        st.rerun()
 
 
 def learning_path_page() -> None:
@@ -900,19 +983,28 @@ def pricing_page() -> None:
             if is_current:
                 st.success("Current plan")
             elif st.session_state.get("access_token"):
-                if st.button(f"Choose {tier['name']}", key=f"tier_{tier['id']}"):
-                    result = api_post("/billing/subscription", {"tier": tier["id"]})
-                    if result:
-                        st.session_state["subscription"] = api_get("/billing/subscription")
-                        st.success(f"{tier['name']} selected.")
+                if tier["id"] == "free":
+                    if st.button(f"Use {tier['name']}", key=f"tier_{tier['id']}"):
+                        result = api_post("/billing/subscription", {"tier": tier["id"]})
+                        if result:
+                            st.session_state["subscription"] = api_get("/billing/subscription")
+                            st.success(f"{tier['name']} selected.")
+                elif st.button(f"Start {tier['name']}", key=f"tier_{tier['id']}"):
+                    checkout = api_post("/billing/checkout", {"tier": tier["id"]})
+                    if checkout:
+                        checkout_url = checkout.get("checkout_url")
+                        if checkout_url:
+                            st.link_button(f"Continue to {tier['name']} checkout", checkout_url)
+                        else:
+                            st.warning(checkout.get("message", "Checkout is not configured yet."))
             else:
                 st.info("Sign in to choose")
 
     st.markdown("### Monetization Model")
     st.write(
-        "The current implementation stores the selected tier in the application database. "
-        "For production billing, connect this flow to a payment provider checkout and update "
-        "the subscription from verified webhooks."
+        "Paid tiers are locked until checkout is completed. In production, connect the "
+        "checkout buttons to a payment provider and activate subscriptions only from "
+        "verified payment webhooks."
     )
 
 
@@ -939,7 +1031,7 @@ def developers_page() -> None:
             "learning portals, internal tools, n8n workflows, and portfolio coaching systems."
         )
         st.markdown("#### Integration Flow")
-        st.write("1. Choose a paid tier with API access.")
+        st.write("1. Choose a plan with API access.")
         st.write("2. Generate an API key.")
         st.write("3. Send requests to the mentor endpoint with the `X-API-Key` header.")
         st.write("4. Store the key securely in your own system or automation platform.")

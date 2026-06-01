@@ -184,3 +184,18 @@ class DeveloperApiKey(Base):
     revoked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_used_at = Column(DateTime)
+
+
+class ChatResponseCache(Base):
+    """Cached mentor responses for repeated research questions."""
+
+    __tablename__ = "chat_response_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cache_key = Column(String(128), unique=True, index=True, nullable=False)
+    prompt = Column(Text, nullable=False)
+    mode = Column(String(50), default="quick", nullable=False)
+    context_hash = Column(String(128), nullable=False)
+    response = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, index=True, nullable=False)

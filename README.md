@@ -135,7 +135,17 @@ The platform includes a tier model that can be connected to a payment provider:
 | Pro | Career changers and automation builders | 10 API keys, 10,000 calls/month |
 | Team | Cohorts and training programs | 50 API keys, 50,000 calls/month |
 
-The current implementation stores the selected tier locally. In production, replace direct tier selection with checkout sessions and verified billing webhooks.
+Paid tiers are locked behind checkout. The Streamlit pricing page starts checkout for Builder, Pro, and Team, while the backend only activates paid subscriptions from trusted server-side billing logic.
+
+Configure hosted checkout links with:
+
+```bash
+BILLING_CHECKOUT_BUILDER_URL=
+BILLING_CHECKOUT_PRO_URL=
+BILLING_CHECKOUT_TEAM_URL=
+```
+
+Production deployments should update subscriptions from verified payment webhooks, not from frontend tier changes.
 
 ## Developer API
 

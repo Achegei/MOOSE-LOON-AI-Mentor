@@ -18,6 +18,7 @@ class BaseLLMService(ABC):
         context: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
     ) -> str:
         """
         Generate a response from the LLM.
@@ -27,6 +28,7 @@ class BaseLLMService(ABC):
             context: Optional context/RAG content
             temperature: Temperature for response generation
             max_tokens: Maximum tokens in response
+            model: Optional provider model override
 
         Returns:
             Generated response text

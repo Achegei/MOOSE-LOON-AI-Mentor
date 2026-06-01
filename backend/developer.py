@@ -11,7 +11,13 @@ from sqlalchemy.orm import Session
 from auth.deps import get_current_user, get_db
 from backend.chat import build_curriculum_context
 from services.api_keys import authenticate_api_key, create_api_key, list_api_keys, revoke_api_key
-from services.billing import get_or_create_subscription, get_tier, list_tiers, set_subscription_tier
+from services.billing import (
+    get_checkout_url,
+    get_or_create_subscription,
+    get_tier,
+    list_tiers,
+    set_subscription_tier,
+)
 from services.llm import get_llm_service
 
 logger = logging.getLogger(__name__)
@@ -20,6 +26,12 @@ router = APIRouter(tags=["developer"])
 
 class TierUpdateRequest(BaseModel):
     """Subscription tier update request."""
+
+    tier: str
+
+
+class CheckoutRequest(BaseModel):
+    """Checkout request for a paid tier."""
 
     tier: str
 
@@ -76,17 +88,51 @@ def update_subscription(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    """Set a subscription tier.
-
-    This is a product-ready placeholder for billing provider integration. In
-    production, replace this direct update with a checkout/webhook flow.
-    """
+    """Set a subscription tier for free downgrade only."""
+    current = get_or_create_subscription(db, user.id)
+    if req.tier == current.tier:
+        return {"tier": current.tier, "status": current.status}
+    if req.tier != "free":
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Paid tiers require checkout before activation",
+        )
     try:
         subscription = set_subscription_tier(db, user.id, req.tier)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     logger.info("Updated subscription tier for user_id=%s tier=%s", user.id, req.tier)
     return {"tier": subscription.tier, "status": subscription.status}
+
+
+@router.post("/billing/checkout")
+def create_checkout(
+    req: CheckoutRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Create or describe checkout for a paid tier.
+
+    This endpoint intentionally does not activate a paid tier. In production,
+    configure hosted checkout URLs or replace this body with a payment provider
+    checkout session. The subscription should be upgraded only from a verified
+    payment webhook.
+    """
+    if req.tier not in {"builder", "pro", "team"}:
+        raise HTTPException(status_code=400, detail="Checkout is only available for paid tiers")
+    get_or_create_subscription(db, user.id)
+    checkout_url = get_checkout_url(req.tier)
+    logger.info("Checkout requested for user_id=%s tier=%s", user.id, req.tier)
+    return {
+        "tier": req.tier,
+        "checkout_required": True,
+        "checkout_url": checkout_url,
+        "message": (
+            "Checkout is required to activate this tier."
+            if checkout_url
+            else "Checkout is not configured yet. Add a payment provider checkout URL for this tier."
+        ),
+    }
 
 
 @router.get("/developer/api-keys")

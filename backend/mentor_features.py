@@ -13,6 +13,7 @@ from auth.deps import get_current_user, get_db
 from backend.chat import build_curriculum_context
 from database import models
 from memory.service import get_or_create_memory, serialize_memory, update_memory
+from services.billing import require_subscription_tier
 from services.llm import get_llm_service
 
 logger = logging.getLogger(__name__)
@@ -117,6 +118,14 @@ def _module_catalog(db: Session) -> list[dict[str, str]]:
     ]
 
 
+def _require_plan(db: Session, user, minimum_tier: str) -> None:
+    """Convert subscription entitlement failures into API responses."""
+    try:
+        require_subscription_tier(db, user.id, minimum_tier)
+    except PermissionError as exc:
+        raise HTTPException(status_code=402, detail=str(exc)) from exc
+
+
 @router.get("/learning-path")
 def get_learning_path(db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Generate a personalized next-step learning path."""
@@ -164,6 +173,7 @@ async def generate_assignment(
     user=Depends(get_current_user),
 ):
     """Generate and persist a level-matched assignment."""
+    _require_plan(db, user, "builder")
     difficulty = req.difficulty or user.skill_level
     context = build_curriculum_context(req.topic)
     prompt = (
@@ -199,6 +209,7 @@ async def recommend_project(
     user=Depends(get_current_user),
 ):
     """Recommend and persist a portfolio project plan."""
+    _require_plan(db, user, "builder")
     difficulty = req.difficulty or user.skill_level
     context = build_curriculum_context(req.goal)
     prompt = (
@@ -237,6 +248,7 @@ async def review_portfolio(
     user=Depends(get_current_user),
 ):
     """Review submitted portfolio content as a senior mentor."""
+    _require_plan(db, user, "pro")
     context = build_curriculum_context("career portfolio project review")
     prompt = (
         "Review this AI and automation portfolio project for a beginner or intermediate learner. "
