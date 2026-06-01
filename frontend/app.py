@@ -989,6 +989,9 @@ def pricing_page() -> None:
                         if result:
                             st.session_state["subscription"] = api_get("/billing/subscription")
                             st.success(f"{tier['name']} selected.")
+                elif not tier.get("checkout_configured"):
+                    st.button(f"Start {tier['name']}", key=f"tier_{tier['id']}", disabled=True)
+                    st.caption("Checkout coming soon")
                 elif st.button(f"Start {tier['name']}", key=f"tier_{tier['id']}"):
                     checkout = api_post("/billing/checkout", {"tier": tier["id"]})
                     if checkout:

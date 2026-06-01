@@ -75,7 +75,16 @@ CHECKOUT_URLS = {
 
 def list_tiers() -> list[dict]:
     """Return public tier data."""
-    return [{"id": tier_id, **tier} for tier_id, tier in TIERS.items()]
+    tiers = []
+    for tier_id, tier in TIERS.items():
+        tiers.append(
+            {
+                "id": tier_id,
+                **tier,
+                "checkout_configured": tier_id == "free" or bool(get_checkout_url(tier_id)),
+            }
+        )
+    return tiers
 
 
 def get_tier(tier_id: str) -> dict:

@@ -130,7 +130,7 @@ def create_checkout(
         "message": (
             "Checkout is required to activate this tier."
             if checkout_url
-            else "Checkout is not configured yet. Add a payment provider checkout URL for this tier."
+            else "Checkout is not available for this plan yet."
         ),
     }
 

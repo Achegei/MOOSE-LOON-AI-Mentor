@@ -239,7 +239,7 @@ Current tiers:
 - Pro: 10 API keys, 10,000 API calls per month
 - Team: 50 API keys, 50,000 API calls per month
 
-Paid tiers are locked by the backend. `POST /billing/subscription` can keep the current plan or downgrade to Free, but it does not activate Builder, Pro, or Team. Paid plan buttons call `POST /billing/checkout`, which returns a hosted checkout URL when configured.
+Paid tiers are locked by the backend. `POST /billing/subscription` can keep the current plan or downgrade to Free, but it does not activate Builder, Pro, or Team. Paid plan buttons call `POST /billing/checkout`, which returns a hosted checkout URL when configured. `GET /billing/tiers` includes `checkout_configured` so the frontend can disable paid checkout buttons until links are available.
 
 Configure hosted checkout links with:
 

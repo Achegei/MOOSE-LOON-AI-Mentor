@@ -10,7 +10,9 @@ def test_tiers_include_paid_api_access() -> None:
 
     assert tiers["free"]["api_keys"] == 1
     assert tiers["free"]["monthly_api_calls"] == 50
+    assert tiers["free"]["checkout_configured"] is True
     assert tiers["builder"]["api_keys"] > 0
+    assert "checkout_configured" in tiers["builder"]
     assert tiers["pro"]["monthly_api_calls"] > tiers["builder"]["monthly_api_calls"]
 
 
