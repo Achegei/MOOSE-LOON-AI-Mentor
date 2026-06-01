@@ -1,130 +1,169 @@
-# MOOSE LOON AI MENTOR PLATFORM
+# MOOSE LOON AI Mentor
 
-An AI Mentor for AI & Automation Education.
+MOOSE LOON is a curriculum-first AI mentor platform for learners building practical skills in AI, prompt engineering, APIs, workflow automation, n8n, AI agents, portfolio development, and career growth.
 
-## Product Vision
+The product is designed to feel like a structured mentor workspace: part tutor, part technical coach, part project advisor, and part career guide.
 
-A production-grade intelligent mentor platform that functions as a personal tutor, career coach, technical mentor, and project advisor for students, career changers, and developers.
+## Product Positioning
 
-## Core Features (v1)
+MOOSE LOON is not a generic chatbot. It is an AI and automation education platform that helps learners:
 
-- ✅ Mentor Chat
-- ✅ User Accounts & Authentication
-- ✅ Conversation History
-- ✅ Curriculum Knowledge Base
-- ✅ Learning Recommendations
-- ✅ Assignment Generation
-- ✅ Project Guidance
-- ✅ Progress Tracking
+- Ask curriculum-grounded questions
+- Build personalized learning paths
+- Generate exercises, quizzes, and mini projects
+- Plan portfolio projects
+- Review portfolio work
+- Track learning progress
+- Maintain persistent learner memory
 
-## Tech Stack
+## Core Capabilities
+
+| Capability | Description |
+| --- | --- |
+| Mentor Chat | Curriculum-backed coaching for AI and automation questions |
+| Learning Path | Dynamic next-step recommendations based on goals and skill level |
+| Practice | Exercises, quizzes, and mini projects generated for the learner |
+| Project Coach | Portfolio project planning and milestone guidance |
+| Portfolio Review | Feedback on project clarity, technical proof, and improvements |
+| Progress Tracking | Persistent module progress, assignments, projects, and learner memory |
+| Accounts | JWT registration, login, session validation, and logout |
+| Knowledge Base | ChromaDB retrieval with local curriculum markdown fallback |
+| Monetization | SaaS tiers for learners, builders, pros, and teams |
+| Developer API | API keys for external systems that need mentor responses |
+
+## Architecture
 
 | Layer | Technology |
-|-------|-----------|
-| **Frontend** | Streamlit |
-| **Backend** | FastAPI |
-| **Database** | MySQL + SQLAlchemy |
-| **Vector Store** | ChromaDB |
-| **LLM** | OpenAI (abstracted) |
-| **Auth** | JWT |
+| --- | --- |
+| Frontend | Streamlit |
+| Backend | FastAPI |
+| Database | MySQL + SQLAlchemy |
+| Vector Store | ChromaDB |
+| LLM Layer | Abstracted provider interface |
+| Default LLM Provider | OpenAI GPT-5 class model |
+| Authentication | JWT |
+
+The architecture follows [agents.md](agents.md), which is the repository source of truth.
 
 ## Project Structure
 
-```
+```text
 .
-├── app.py                 # Main entry point
-├── backend/               # FastAPI application
-├── frontend/              # Streamlit UI
-├── database/              # Database models & migrations
-├── services/              # Business logic services
-│   └── llm/              # LLM abstraction layer
-├── knowledge/             # Curriculum content
-├── rag/                   # Retrieval Augmented Generation
-├── memory/                # User memory system
-├── models/                # Data models
-├── auth/                  # Authentication & JWT
-├── curriculum/            # Learning modules
-├── prompts/               # Prompt templates
-├── tests/                 # Unit & integration tests
-└── docs/                  # Documentation
+├── app.py
+├── backend/
+├── frontend/
+├── database/
+├── services/
+│   ├── llm/
+│   └── rag/
+├── knowledge/
+├── rag/
+├── memory/
+├── models/
+├── auth/
+├── curriculum/
+├── prompts/
+├── tests/
+└── docs/
 ```
 
 ## Quick Start
 
-### 1. Setup Environment
+Create and activate a virtual environment:
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-### 2. Configure Environment
+Install dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Create environment configuration:
 
 ```bash
 cp .env.example .env
-# Edit .env with your database and API credentials
-# Set your OpenAI key in .env as OPENAI_API_KEY and never commit the real key.
 ```
 
-### 3. Initialize Database
+Edit `.env` with MySQL credentials, a strong `SECRET_KEY`, and your LLM API key.
+
+Ingest starter curriculum:
 
 ```bash
-# Run migrations (when implemented)
-alembic upgrade head
+python -m rag.ingest
 ```
 
-### 4. Start Backend
+Start the backend:
 
 ```bash
 uvicorn backend.main:app --reload
 ```
 
-### 5. Start Frontend
+Start the frontend:
 
 ```bash
 streamlit run frontend/app.py
 ```
 
-## Architecture Decisions
+## Development
 
-- **No Model Training**: Uses prompt engineering, RAG, and memory for value
-- **Curriculum-First**: Curriculum knowledge is authoritative
-- **RAG Pipeline**: All educational responses leverage retrieval
-- **Session Persistence**: Memory survives application restarts
-- **Scalable Design**: Supports 100+ concurrent learners
+Run tests:
 
-## Development Guidelines
+```bash
+python -m pytest -q
+```
 
-- Every module has single responsibility
-- Type hints required
-- Docstrings mandatory
-- Unit & integration tests required
-- Security-first: No hardcoded secrets
-- Centralized logging
+Run a syntax/import check:
 
-## Success Criteria
+```bash
+python -m compileall -q .
+```
 
-1. ✅ User registration
-2. ✅ Chat with mentor using curriculum knowledge
-3. ✅ Progress tracking & persistence
-4. ✅ Assignment generation
-5. ✅ Project recommendations
-6. ✅ Learning path generation
-7. ✅ Ubuntu deployment ready
+See [docs/DEVELOPER.md](docs/DEVELOPER.md) for developer documentation, architecture notes, API responsibilities, RAG behavior, and extension guidance.
 
-## Contributing
+## SaaS Tiers
 
-When implementing:
-- Follow the architecture specification in `agents.md`
-- This document is the source of truth
-- Code conflicts with spec? The spec wins
+The platform includes a tier model that can be connected to a payment provider:
 
-## License
+| Tier | Audience | API Access |
+| --- | --- | --- |
+| Free | Learners exploring AI and automation mentorship | 1 trial API key, 50 calls/month |
+| Builder | Learners building portfolio projects | 2 API keys, 1,000 calls/month |
+| Pro | Career changers and automation builders | 10 API keys, 10,000 calls/month |
+| Team | Cohorts and training programs | 50 API keys, 50,000 calls/month |
 
-TBD
+The current implementation stores the selected tier locally. In production, replace direct tier selection with checkout sessions and verified billing webhooks.
 
----
+## Developer API
 
-**Mission**: Build the ultimate AI & Automation mentor platform for learners worldwide.
-# MOOSE-LOON-AI-Mentor
+Paid tiers can create developer API keys from the Streamlit Developers page.
+
+External systems can call:
+
+```text
+POST /v1/mentor/chat
+X-API-Key: mlm_your_key_here
+```
+
+Example request:
+
+```json
+{
+  "prompt": "Explain prompt engineering to a beginner.",
+  "learner_context": "The learner is new to APIs and n8n."
+}
+```
+
+## Security Notes
+
+- Never commit `.env`.
+- Never place real API keys in `.env.example`.
+- Rotate any key that has ever been pasted into source control or shared logs.
+- Use environment variables for all secrets.
+
+## Product Principle
+
+Every feature should improve the learner's ability to learn AI and automation. If it does not support mentorship, learning, career growth, or practical project execution, it does not belong in the product.

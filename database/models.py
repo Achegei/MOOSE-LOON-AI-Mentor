@@ -153,3 +153,34 @@ class Project(Base):
     repository_url = Column(String(500))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserSubscription(Base):
+    """Current SaaS tier for a learner or developer account."""
+
+    __tablename__ = "user_subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, unique=True, index=True, nullable=False)
+    tier = Column(String(50), default="free", nullable=False)
+    status = Column(String(50), default="active", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DeveloperApiKey(Base):
+    """Hashed API key for external system integrations."""
+
+    __tablename__ = "developer_api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    key_prefix = Column(String(32), index=True, nullable=False)
+    key_hash = Column(String(128), unique=True, index=True, nullable=False)
+    tier = Column(String(50), default="free", nullable=False)
+    monthly_limit = Column(Integer, default=0, nullable=False)
+    requests_this_month = Column(Integer, default=0, nullable=False)
+    revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime)

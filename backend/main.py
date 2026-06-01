@@ -33,10 +33,12 @@ from auth.routes import router as auth_router
 from database.session import init_db
 
 from backend.chat import router as chat_router
+from backend.developer import router as developer_router
 from backend.mentor_features import router as mentor_router
 
 app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(developer_router)
 app.include_router(mentor_router)
 
 
